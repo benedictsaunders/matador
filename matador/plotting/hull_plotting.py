@@ -9,6 +9,7 @@ diagrams generally.
 
 from collections import defaultdict
 import numpy as np
+import matplotlib.colors as mcolors
 from matador.utils.chem_utils import get_stoich_from_formula, get_formula_from_stoich
 from matador.utils.viz_utils import (
     get_element_colours,
@@ -60,7 +61,8 @@ def _get_hull_labels(hull, label_cutoff=None, num_species=None, exclude_edges=Tr
             doc for doc in hull.cursor if doc["hull_distance"] <= label_cutoff + EPS
         ]
 
-    label_cursor = sorted(label_cursor, key=lambda _: _["hull_distance"], reverse=False)
+    label_cursor = sorted(label_cursor, key=lambda _: _[
+                          "hull_distance"], reverse=False)
 
     num_labels = len(
         {get_formula_from_stoich(doc["stoichiometry"]) for doc in label_cursor}
@@ -107,8 +109,13 @@ def plot_2d_hull(
     plot_tie_line=True,
     plot_hull_points=True,
     labels=None,
+    keys=None,
+    custom_labels=None,
+    colour_by_custom_label=False,
     label_cutoff=None,
     colour_by_source=False,
+    colour_by_spacegroup=False,
+    use_markers=False,
     sources=None,
     hull_label=None,
     source_labels=None,
@@ -121,6 +128,7 @@ def plot_2d_hull(
     eform_limits=None,
     legend_kwargs=None,
     hull_dist_unit="meV",
+    legend_only=[],
     **kwargs,
 ):
     """Plot calculated hull, returning ax and fig objects for further editing.
@@ -187,7 +195,8 @@ def plot_2d_hull(
     scale = 1
     scatter = []
     chempot_labels = [
-        get_formula_from_stoich(get_stoich_from_formula(species, sort=False), tex=True)
+        get_formula_from_stoich(get_stoich_from_formula(
+            species, sort=False), tex=True)
         for species in hull.species
     ]
     tie_line = hull.convex_hull.points[hull.convex_hull.vertices]
@@ -256,7 +265,8 @@ def plot_2d_hull(
 
     # annotate hull structures
     if labels or label_cutoff is not None:
-        label_cursor = _get_hull_labels(hull, num_species=2, label_cutoff=label_cutoff)
+        label_cursor = _get_hull_labels(
+            hull, num_species=2, label_cutoff=label_cutoff)
         already_labelled = []
         for ind, doc in enumerate(label_cursor):
             formula = get_formula_from_stoich(doc["stoichiometry"], sort=True)
@@ -275,9 +285,11 @@ def plot_2d_hull(
                 e_f = label_cursor[ind]["formation_" + str(hull.energy_key)]
                 conc = label_cursor[ind]["concentration"][0]
                 if conc < min_comp:
-                    position = (0.8 * conc, label_offset[0] * (e_f - label_offset[1]))
+                    position = (
+                        0.8 * conc, label_offset[0] * (e_f - label_offset[1]))
                 elif label_cursor[ind]["concentration"][0] == min_comp:
-                    position = (conc, label_offset[0] * (e_f - label_offset[1]))
+                    position = (
+                        conc, label_offset[0] * (e_f - label_offset[1]))
                 else:
                     position = (
                         min(1.1 * conc + 0.15, 0.95),
@@ -295,7 +307,8 @@ def plot_2d_hull(
                         offset = _specific_label_offset.pop(plain_formula)
                         if offset is None:
                             continue
-                        position = (position[0] + offset[0], position[1] + offset[1])
+                        position = (position[0] + offset[0],
+                                    position[1] + offset[1])
                 if colour_by_composition:
                     text_colour = conc_cmap(conc)
                 else:
@@ -322,7 +335,8 @@ def plot_2d_hull(
     if _specific_label_offset:
         import warnings
 
-        warnings.warn(f"Found unused requested offsets: {_specific_label_offset}")
+        warnings.warn(
+            f"Found unused requested offsets: {_specific_label_offset}")
 
     # points for off hull structures; we either colour by source or by energy
     if plot_points and not colour_by_source:
@@ -331,7 +345,8 @@ def plot_2d_hull(
             # if no specified hull cutoff, ignore labels and colour by hull distance
             if plot_points:
                 concs = hull.structures[np.argsort(hull.hull_dist), 0][::-1]
-                energies = (hull.structures[np.argsort(hull.hull_dist), -1][::-1],)
+                energies = (
+                    hull.structures[np.argsort(hull.hull_dist), -1][::-1],)
                 if colour_by_composition:
                     point_colours = concs
                     norm = None
@@ -406,8 +421,21 @@ def plot_2d_hull(
             legend_kwargs=legend_kwargs,
         )
 
+    elif colour_by_spacegroup:
+        _scatter_plot_by_spacegroup(
+            hull,
+            ax,
+            scale,
+            kwargs,
+            use_markers=use_markers,
+            plot_hull_points=plot_hull_points,
+
+            legend_kwargs=legend_kwargs,
+        )
+
     if eform_limits is None:
-        eform_limits = (np.min(hull.structures[:, 1]), np.max(hull.structures[:, 1]))
+        eform_limits = (np.min(hull.structures[:, 1]), np.max(
+            hull.structures[:, 1]))
         lims = (
             -0.1 if eform_limits[0] >= 0 else 1.25 * eform_limits[0],
             eform_limits[1] if eform_limits[0] >= 0 else 0.05,
@@ -425,7 +453,8 @@ def plot_2d_hull(
             )
         else:
             ax.set_title(
-                r"{d[0]}$_\mathrm{{x}}${d[1]}$_\mathrm{{1-x}}$".format(d=chempot_labels)
+                r"{d[0]}$_\mathrm{{x}}${d[1]}$_\mathrm{{1-x}}$".format(
+                    d=chempot_labels)
             )
     elif isinstance(title, str) and title != "":
         ax.set_title(title)
@@ -517,12 +546,14 @@ def plot_ensemble_hull(
             if doc[data_key]["hull_distance"][ind] <= 0.0 + EPS
         ]
         min_ef = np.min(
-            [doc[data_key][formation_energy_key][ind] for doc in hull_cursor] + [min_ef]
+            [doc[data_key][formation_energy_key][ind]
+                for doc in hull_cursor] + [min_ef]
         )
         if plot_hulls:
             ax.plot(
                 [doc["concentration"][0] for doc in hull_cursor],
-                [doc[data_key][formation_energy_key][ind] for doc in hull_cursor],
+                [doc[data_key][formation_energy_key][ind]
+                    for doc in hull_cursor],
                 alpha=alpha,
                 c="k",
                 lw=0.5,
@@ -531,7 +562,8 @@ def plot_ensemble_hull(
         if plot_hull_points:
             ax.scatter(
                 [doc["concentration"][0] for doc in hull_cursor],
-                [doc[data_key][formation_energy_key][ind] for doc in hull_cursor],
+                [doc[data_key][formation_energy_key][ind]
+                    for doc in hull_cursor],
                 alpha=alpha,
                 marker="o",
                 c=colours_list[1],
@@ -541,7 +573,8 @@ def plot_ensemble_hull(
         if plot_points:
             ax.scatter(
                 [doc["concentration"][0] for doc in hull.cursor],
-                [doc[data_key][formation_energy_key][ind] for doc in hull.cursor],
+                [doc[data_key][formation_energy_key][ind]
+                    for doc in hull.cursor],
                 alpha=alpha,
                 marker="o",
                 c="k",
@@ -622,7 +655,8 @@ def plot_temperature_hull(
 
     ax.plot(
         [doc["concentration"][0] for doc in hull.hull_cursor],
-        [doc["formation_" + hull.chempot_energy_key] for doc in hull.hull_cursor],
+        [doc["formation_" + hull.chempot_energy_key]
+            for doc in hull.hull_cursor],
         marker="o",
         alpha=1,
         c="k",
@@ -657,13 +691,15 @@ def plot_temperature_hull(
             if doc[data_key]["hull_distance"][ind] <= 0.0 + EPS
         ]
         min_ef = np.min(
-            [doc[data_key][formation_energy_key][ind] for doc in hull_cursor] + [min_ef]
+            [doc[data_key][formation_energy_key][ind]
+                for doc in hull_cursor] + [min_ef]
         )
         colour_ind = int(n_hulls * hull.temperatures[ind] / max_temperature)
         if plot_hulls:
             ax.plot(
                 [doc["concentration"][0] for doc in hull_cursor],
-                [doc[data_key][formation_energy_key][ind] for doc in hull_cursor],
+                [doc[data_key][formation_energy_key][ind]
+                    for doc in hull_cursor],
                 alpha=alpha,
                 c=colours[colour_ind],
                 lw=1 * lw_scale,
@@ -672,7 +708,8 @@ def plot_temperature_hull(
         if plot_hull_points:
             ax.scatter(
                 [doc["concentration"][0] for doc in hull_cursor],
-                [doc[data_key][formation_energy_key][ind] for doc in hull_cursor],
+                [doc[data_key][formation_energy_key][ind]
+                    for doc in hull_cursor],
                 alpha=1,
                 marker="o",
                 c=colours[colour_ind],
@@ -684,7 +721,8 @@ def plot_temperature_hull(
         if plot_points:
             ax.scatter(
                 [doc["concentration"][0] for doc in hull.cursor],
-                [doc[data_key][formation_energy_key][ind] for doc in hull.cursor],
+                [doc[data_key][formation_energy_key][ind]
+                    for doc in hull.cursor],
                 label="Structures above hull" if ind == n_hulls - 2 else None,
                 alpha=1,
                 marker="o",
@@ -700,7 +738,8 @@ def plot_temperature_hull(
         import matplotlib.colors
 
         mappable = plt.cm.ScalarMappable(
-            cmap=matplotlib.colors.LinearSegmentedColormap.from_list("cut", colours),
+            cmap=matplotlib.colors.LinearSegmentedColormap.from_list(
+                "cut", colours),
             norm=plt.Normalize(vmin=0, vmax=np.max(hull.temperatures)),
         )
         mappable._A = hull.temperatures
@@ -977,7 +1016,8 @@ def plot_ternary_hull(
             elif hull_dist[i] <= min_cut:
                 colours_list.append(0)
             else:
-                colours_list.append(int((n_colours - 1) * (hull_dist[i] / max_cut)))
+                colours_list.append(
+                    int((n_colours - 1) * (hull_dist[i] / max_cut)))
         colours_list = np.asarray(colours_list)
         if colour_points_by == "concentration":
             colours = [
@@ -1038,7 +1078,8 @@ def plot_ternary_hull(
             for dist in labelled_hull_dists:
                 if dist != 0:
                     size = (
-                        70 * (1 - int((n_colours - 1) * (dist / max_cut)) / n_colours)
+                        70 * (1 - int((n_colours - 1) *
+                              (dist / max_cut)) / n_colours)
                         + 15
                     )
                     lw = 1
@@ -1065,7 +1106,8 @@ def plot_ternary_hull(
 
         for (i, j, k) in simplex_iterator(scale):
             capacities[(i, j, k)] = get_generic_grav_capacity(
-                [float(i) / scale, float(j) / scale, float(scale - i - j) / scale],
+                [float(i) / scale, float(j) / scale,
+                 float(scale - i - j) / scale],
                 hull.species,
             )
 
@@ -1094,7 +1136,8 @@ def plot_ternary_hull(
         for (i, j, k) in simplex_iterator(scale):
             fake_structures.append([float(i) / scale, float(j) / scale, 0.0])
         fake_structures = np.asarray(fake_structures)
-        plane_energies = hull.get_hull_distances(fake_structures, precompute=False)
+        plane_energies = hull.get_hull_distances(
+            fake_structures, precompute=False)
         ind = 0
         for (i, j, k) in simplex_iterator(scale):
             energies[(i, j, k)] = -1 * plane_energies[ind]
@@ -1150,13 +1193,15 @@ def plot_ternary_hull(
 
     # add labels
     if labels:
-        label_cursor = _get_hull_labels(hull, label_cutoff=label_cutoff, num_species=3)
+        label_cursor = _get_hull_labels(
+            hull, label_cutoff=label_cutoff, num_species=3)
         label_coords = [
             [0.0, label_offset - i * label_spacing] for i in range(len(label_cursor))
         ]
 
         for ind, doc in enumerate(label_cursor):
-            conc = np.asarray(doc["concentration"] + [1 - sum(doc["concentration"])])
+            conc = np.asarray(doc["concentration"] +
+                              [1 - sum(doc["concentration"])])
             label = get_formula_from_stoich(
                 doc["stoichiometry"],
                 sort=False,
@@ -1170,7 +1215,8 @@ def plot_ternary_hull(
                 arrowstyle="-|>", lw=2, alpha=0, zorder=1, shrinkA=2, shrinkB=4
             )
             if colour_points_by == "concentration":
-                text_colour = colour_from_ternary_concentration(conc, hull.species)
+                text_colour = colour_from_ternary_concentration(
+                    conc, hull.species)
             else:
                 text_colour = "k"
 
@@ -1211,7 +1257,7 @@ def _scatter_plot_by_spacegroup(
     ax,
     scale,
     kwargs,
-    legend_only,
+    use_markers=True,
     plot_hull_points=True,
     legend_kwargs=None,
 ):
@@ -1219,6 +1265,11 @@ def _scatter_plot_by_spacegroup(
     provenance of a structure.
 
     """
+    if use_markers:
+        markers = ["o", "v", "s", "p", "*", "h",
+                   "D", "P", "X", ".", "1", "+", "x"]
+    else:
+        markers = ["."]
 
     # hack: double length of hull colours
     hull.colours.extend(hull.colours)
@@ -1263,7 +1314,7 @@ def _scatter_plot_by_spacegroup(
 
     legend_sgs = {}
 
-    for sg in sgset:
+    for idx, sg in enumerate(sgset):
         if "concs" not in points_by_sg[sg]:
             continue
 
@@ -1274,6 +1325,7 @@ def _scatter_plot_by_spacegroup(
             energies,
             c=colour_choices[sg],
             alpha=alpha,
+            marker=markers[idx % len(markers)],
             s=scale * 20,
             lw=0,
             zorder=100,
@@ -1286,14 +1338,14 @@ def _scatter_plot_by_spacegroup(
                               s=scale * 40, lw=1.5, zorder=1e5)
 
     if not plot_hull_points:
-        for sg in sgset:
+        for idx, sg in enumerate(sgset):
             if "concs" not in hull_points_by_sg[sg]:
                 continue
 
             concs = hull_points_by_sg[sg]["concs"]
             energies = hull_points_by_sg[sg]["energies"]
             ax.scatter(
-                concs, energies, facecolor=colour_choices[sg], **hull_point_options
+                concs, energies, facecolor=colour_choices[sg], marker=markers[idx % len(markers)], **hull_point_options
             )
 
             legend_sgs[sg] = colour_choices[sg]
@@ -1304,6 +1356,7 @@ def _scatter_plot_by_spacegroup(
                 1e10,
                 1e10,
                 facecolor=legend_sgs[sg],
+                marker=markers[ind % len(markers)],
                 label=sgset[ind],
                 **hull_point_options,
             )
@@ -1408,7 +1461,8 @@ def _scatter_plot_by_source(
 
         legend_sources[source] = colour_choices[source]
 
-    hull_point_options = dict(edgecolor="k", alpha=1, s=scale * 40, lw=1.5, zorder=1e5)
+    hull_point_options = dict(edgecolor="k", alpha=1,
+                              s=scale * 40, lw=1.5, zorder=1e5)
 
     if not plot_hull_points:
         for source in sources:
