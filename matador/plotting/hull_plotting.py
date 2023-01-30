@@ -1206,6 +1206,117 @@ def plot_ternary_hull(
     return ax
 
 
+def _scatter_plot_by_spacegroup(
+    hull,
+    ax,
+    scale,
+    kwargs,
+    legend_only,
+    plot_hull_points=True,
+    legend_kwargs=None,
+):
+    """Add scatter points to the hull depending on the guessed
+    provenance of a structure.
+
+    """
+
+    # hack: double length of hull colours
+    hull.colours.extend(hull.colours)
+
+    spacegroups = []
+    for doc in hull.cursor:
+        doc.setdefault("space_group", "Unknown")
+        sg = doc["space_group"]
+        if sg == "":
+            sg = "Unknown"
+        spacegroups.append(sg)
+
+    sgset = list(set(spacegroups))
+    print(sgset)
+    colour_choices = {
+        sg: hull.colours[ind + 1] for ind, sg in enumerate(sgset)
+    }
+    points_by_sg = {sg: defaultdict(list) for sg in sgset}
+    hull_points_by_sg = {sg: defaultdict(list) for sg in sgset}
+    sgs_present = set()
+    for doc in hull.cursor:
+        sg = doc["space_group"]
+        if sg not in sgset:
+            # use grey for undesired sources
+            sg = "Unknown"
+        if doc["hull_distance"] <= 0 + 2e-3 and not plot_hull_points:
+            hull_points_by_sg[sg]["concs"].append(doc["concentration"])
+            hull_points_by_sg[sg]["energies"].append(
+                doc["formation_{}".format(hull.energy_key)]
+            )
+        else:
+            points_by_sg[sg]["concs"].append(doc["concentration"])
+            points_by_sg[sg]["energies"].append(
+                doc["formation_{}".format(hull.energy_key)]
+            )
+
+        sgs_present.add(sg)
+
+    alpha = kwargs.get("alpha")
+    if alpha is None:
+        alpha = 0.8
+
+    legend_sgs = {}
+
+    for sg in sgset:
+        if "concs" not in points_by_sg[sg]:
+            continue
+
+        concs = points_by_sg[sg]["concs"]
+        energies = points_by_sg[sg]["energies"]
+        ax.scatter(
+            concs,
+            energies,
+            c=colour_choices[sg],
+            alpha=alpha,
+            s=scale * 20,
+            lw=0,
+            zorder=100,
+            rasterized=True,
+        )
+
+        legend_sgs[sg] = colour_choices[sg]
+
+    hull_point_options = dict(edgecolor="k", alpha=1,
+                              s=scale * 40, lw=1.5, zorder=1e5)
+
+    if not plot_hull_points:
+        for sg in sgset:
+            if "concs" not in hull_points_by_sg[sg]:
+                continue
+
+            concs = hull_points_by_sg[sg]["concs"]
+            energies = hull_points_by_sg[sg]["energies"]
+            ax.scatter(
+                concs, energies, facecolor=colour_choices[sg], **hull_point_options
+            )
+
+            legend_sgs[sg] = colour_choices[sg]
+
+    for ind, sg in enumerate(sgset):
+        if sg in legend_sgs:
+            ax.scatter(
+                1e10,
+                1e10,
+                facecolor=legend_sgs[sg],
+                label=sgset[ind],
+                **hull_point_options,
+            )
+
+    if legend_kwargs is not None:
+        legend = ax.legend(**legend_kwargs)
+    else:
+        legend = ax.legend(ncol=2)
+    legend.set_zorder(1e20)
+
+    return ax
+
+
 def _scatter_plot_by_source(
     hull,
     ax,
