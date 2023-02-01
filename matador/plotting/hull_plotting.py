@@ -10,7 +10,7 @@ diagrams generally.
 from collections import defaultdict
 import numpy as np
 import matplotlib.colors as mcolors
-from matador.utils.chem_utils import get_stoich_from_formula, get_formula_from_stoich
+from matador.utils.chem_utils import get_stoich_from_formula, get_number_of_chempots, get_formula_from_stoich
 from matador.utils.viz_utils import (
     get_element_colours,
     colour_from_ternary_concentration,
@@ -109,13 +109,8 @@ def plot_2d_hull(
     plot_tie_line=True,
     plot_hull_points=True,
     labels=None,
-    keys=None,
-    custom_labels=None,
-    colour_by_custom_label=False,
     label_cutoff=None,
     colour_by_source=False,
-    colour_by_spacegroup=False,
-    use_markers=False,
     sources=None,
     hull_label=None,
     source_labels=None,
@@ -128,7 +123,9 @@ def plot_2d_hull(
     eform_limits=None,
     legend_kwargs=None,
     hull_dist_unit="meV",
-    legend_only=[],
+    colour_by_spacegroup=False,
+    use_markers_for_spacegroups=False,
+    vlines=None,
     **kwargs,
 ):
     """Plot calculated hull, returning ax and fig objects for further editing.
@@ -156,6 +153,13 @@ def plot_2d_hull(
         title (str/bool): whether to include a plot title.
         png/pdf/svg (bool): whether or not to write the plot to a file.
         plot_fname (str): filename to write plot to, without file extension.
+        colour_by_spagroup (bool): colour the points according to their
+            spacegroup, as the colours appear in hull.colours.
+        use_markers_for_spacegroups (bool): use markers as well as colours for
+            increased clarity when colouring by spacegroups.
+        vlines (list of dict): insert vertical lines onto the plot at a given concentration/
+            stoichiometry. The keys of the dictionary should be "stoichiomtery",
+            "colour", "width" and "alpha".
 
     Returns:
         matplotlib.axes.Axes: matplotlib axis with plot.
@@ -177,6 +181,34 @@ def plot_2d_hull(
         hull.colours = list(plt.rcParams["axes.prop_cycle"].by_key()["color"])
     hull.default_cmap_list = get_linear_cmap(hull.colours[1:4], list_only=True)
     hull.default_cmap = get_linear_cmap(hull.colours[1:4], list_only=False)
+
+    if vlines is not None:
+        for d in vlines:
+            if d.get("formula") is not None:
+                stoich = get_stoich_from_formula(d["formula"])
+            elif d.get("stoichiometry"):
+                stoich = d["stoichiometry"]
+
+            num_chem_pots = get_number_of_chempots(
+                stoich,
+                [get_stoich_from_formula(f) for f in hull.chempots.keys()]
+            )
+            xconc = num_chem_pots[:-1] / np.sum(num_chem_pots)
+
+            if d.get("width") is None:
+                lw = 1
+            else:
+                lw = d["width"]
+            if d.get("colour") is None:
+                colour = "red"
+            else:
+                colour = d["colour"]
+
+            ax.axvline(
+                x=xconc,
+                lw=lw,
+                color=colour,
+            )
 
     if colour_by_composition:
         try:
@@ -427,7 +459,7 @@ def plot_2d_hull(
             ax,
             scale,
             kwargs,
-            use_markers=use_markers,
+            use_markers=use_markers_for_spacegroups,
             plot_hull_points=plot_hull_points,
 
             legend_kwargs=legend_kwargs,
@@ -1269,9 +1301,9 @@ def _scatter_plot_by_spacegroup(
         markers = ["o", "v", "s", "p", "*", "h",
                    "D", "P", "X", ".", "1", "+", "x"]
     else:
-        markers = ["."]
+        markers = ["o"]
 
-    # hack: double length of hull colours
+    # hack: double length of hull colours # Or we could use the modulo trick for wrapping the list?
     hull.colours.extend(hull.colours)
 
     spacegroups = []
@@ -1283,7 +1315,6 @@ def _scatter_plot_by_spacegroup(
         spacegroups.append(sg)
 
     sgset = list(set(spacegroups))
-    print(sgset)
     colour_choices = {
         sg: hull.colours[ind + 1] for ind, sg in enumerate(sgset)
     }
