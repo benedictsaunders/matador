@@ -1400,7 +1400,6 @@ def _scatter_plot_by_spacegroup(
 
     return ax
 
-
 def _scatter_plot_by_source(
     hull,
     ax,
@@ -1417,7 +1416,7 @@ def _scatter_plot_by_source(
     """
     from matador.utils.cursor_utils import get_guess_doc_provenance
 
-    if sources is None:
+    if sources is None or sources == "default":
         sources = [
             "AIRSS",
             "GA",
@@ -1436,6 +1435,8 @@ def _scatter_plot_by_source(
     else:
         assert len(source_labels) == len(sources)
 
+    source_overrides = dict(zip(source_labels, sources))
+
     if "Other" not in sources:
         sources.append("Other")
         source_labels.append("Other")
@@ -1450,7 +1451,7 @@ def _scatter_plot_by_source(
     hull_points_by_source = {source: defaultdict(list) for source in sources}
     sources_present = set()
     for doc in hull.cursor:
-        source = get_guess_doc_provenance(doc["source"])
+        source = get_guess_doc_provenance(doc["source"], overrides = source_overrides)
         if source not in sources:
             # use grey for undesired sources
             source = "Other"
@@ -1514,7 +1515,7 @@ def _scatter_plot_by_source(
                 1e10,
                 1e10,
                 facecolor=legend_sources[source],
-                label=source_labels[ind],
+                label=source,
                 **hull_point_options,
             )
 

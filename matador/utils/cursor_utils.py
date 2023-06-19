@@ -413,7 +413,7 @@ def get_array_from_cursor(cursor, key, pad_missing=False):
     return array
 
 
-def get_guess_doc_provenance(sources, icsd=None):
+def get_guess_doc_provenance(sources, icsd=None, overrides = None):
     """Returns a guess at the provenance of a structure
     from its source list.
 
@@ -442,7 +442,7 @@ def get_guess_doc_provenance(sources, icsd=None):
                     prov = "ICSD"
             elif "swap" in fname_with_folder:
                 prov = "SWAPS"
-            elif "-ga-" in fname:
+            elif "-ga-" in fname or "ea_" in fname:
                 prov = "GA"
             elif icsd is not None:
                 prov = "ICSD"
@@ -458,9 +458,14 @@ def get_guess_doc_provenance(sources, icsd=None):
                 prov = "SM"
             elif "-doi-" in fname:
                 prov = "DOI"
+            elif "_nmd-" in fname:
+                prov = "NOMAD"
             elif "-config_enum" in fname:
                 prov = "ENUM"
-
+            if overrides is not None:
+                for ok, ov in overrides.items():
+                    if ok in fname:
+                        prov = ov
     return prov
 
 
