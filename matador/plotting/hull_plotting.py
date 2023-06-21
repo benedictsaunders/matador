@@ -15,7 +15,10 @@ from matador.utils.viz_utils import (
     get_element_colours,
     colour_from_ternary_concentration,
 )
+
+from matador.utils.print_utils import subscript_numbers, stoich2tex
 from matador.plotting.plotting import plotting_function, get_linear_cmap, SAVE_EXTS
+from pprint import pprint
 
 EPS = 1e-12
 
@@ -184,6 +187,7 @@ def plot_2d_hull(
 
     if vlines is not None:
         for d in vlines:
+
             if d.get("formula") is not None:
                 stoich = get_stoich_from_formula(d["formula"])
             elif d.get("stoichiometry"):
@@ -204,11 +208,20 @@ def plot_2d_hull(
             else:
                 colour = d["colour"]
 
+            if d.get("label", True):
+                lab = stoich2tex(stoich)
+            else:
+                lab = None
+
             ax.axvline(
                 x=xconc,
                 lw=lw,
                 color=colour,
+                label=lab
             )
+        
+        if any([d.get("label", True) for d in vlines]):
+            ax.legend(loc = "best")
 
     if colour_by_composition:
         try:
@@ -524,7 +537,8 @@ def plot_2d_hull(
                     "{}.{}".format(fname, ext), bbox_inches="tight", transparent=True
                 )
                 print("Wrote {}.{}".format(fname, ext))
-
+    # leg_handles = ax.get_legend_handles_labels()
+    # pprint(leg_handles)
     return ax
 
 

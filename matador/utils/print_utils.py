@@ -39,6 +39,25 @@ def print_notify(string):
     print(string, end="")
     print("\033[0m")
 
+def subscript_numbers(s):
+    """Makes all numbers into subscript explicit characters"""
+    sb = s.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+    mstr = s.translate(sb)
+    return mstr
+
+def stoich2tex(s):
+    """Convert the nested stoichiometry list to a TeX string"""
+    list_tex = []
+    for symbol, count in s:
+        if count > 0:
+            list_tex.append(symbol)
+        if count != 1:
+            if float(count).is_integer():
+                count = int(count)
+            list_tex.append(f"_{{{count}}}")        
+
+    return f"${''.join(list_tex)}$"
+
 
 def dumps(obj, **kwargs):
     """Mirrors `json.dumps` whilst handling numpy arrays."""
