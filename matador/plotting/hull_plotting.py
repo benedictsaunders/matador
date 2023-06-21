@@ -18,7 +18,6 @@ from matador.utils.viz_utils import (
 
 from matador.utils.print_utils import subscript_numbers, stoich2tex
 from matador.plotting.plotting import plotting_function, get_linear_cmap, SAVE_EXTS
-from pprint import pprint
 
 EPS = 1e-12
 
@@ -537,8 +536,7 @@ def plot_2d_hull(
                     "{}.{}".format(fname, ext), bbox_inches="tight", transparent=True
                 )
                 print("Wrote {}.{}".format(fname, ext))
-    # leg_handles = ax.get_legend_handles_labels()
-    # pprint(leg_handles)
+
     return ax
 
 
