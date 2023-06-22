@@ -18,6 +18,7 @@ from matador.utils.viz_utils import (
 
 from matador.utils.print_utils import subscript_numbers, stoich2tex
 from matador.plotting.plotting import plotting_function, get_linear_cmap, SAVE_EXTS
+from pprint import pprint
 
 EPS = 1e-12
 
@@ -128,6 +129,7 @@ def plot_2d_hull(
     colour_by_spacegroup=False,
     use_markers_for_spacegroups=False,
     vlines=None,
+    multiple_legends = False,
     **kwargs,
 ):
     """Plot calculated hull, returning ax and fig objects for further editing.
@@ -536,6 +538,30 @@ def plot_2d_hull(
                     "{}.{}".format(fname, ext), bbox_inches="tight", transparent=True
                 )
                 print("Wrote {}.{}".format(fname, ext))
+
+    if multiple_legends:
+        raise NotImplementedError()
+
+        legs = []
+        artists = []
+        leg_handles = ax.get_legend_handles_labels()
+        leg_types = list(set([type(t) for t in leg_handles[0]]))
+        if len(leg_types) < 2:
+            return ax
+
+        transposed = ([list(x) for x in zip(*leg_handles)])
+
+        for idx, t in enumerate(leg_types):
+            legs.append([])
+            for nt, l in transposed:
+                if type(nt) == t:
+                    legs[idx].append([t, l])
+            obj, lab = list(map(list, zip(*legs[idx])))
+            artists.append(ax.legend(obj, lab))
+        for artist in artists[:-1]:
+            ax.add_artist(artist)
+    return ax
+                    
 
     return ax
 
